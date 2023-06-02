@@ -77,9 +77,10 @@ def provision(config, session_factory):
         security_groups=config['security_groups'],
         dead_letter_config=config.get('dead_letter_config', {}),
         events=[
+            # TODO: add option to rather trigger the function from SQS here
             CloudWatchEventSource(
                 {'type': 'periodic',
-                 'schedule': config.get('lambda_schedule', 'rate(5 minutes)')},
+                 'schedule': config.get('lambda_schedule', 'rate(5 minutes)')}, # TODO: add configurable time
                 session_factory)
         ])
 
