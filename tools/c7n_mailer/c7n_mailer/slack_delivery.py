@@ -34,8 +34,8 @@ class SlackDelivery:
         # Check for Slack targets in 'to' action and render appropriate template.
         for target in sqs_message.get("action", ()).get("to", []):
             if target == "slack://event-owner":
-                event_owner_email = self.email_hander.get_event_owner_email(["event-owner"], sqs_message["event"])
-                resolved_addrs = self.retrieve_user_im([event_owner_email])
+                event_owner_email = self.email_handler.get_event_owner_email(["event-owner"], sqs_message["event"])
+                resolved_addrs = self.retrieve_user_im(event_owner_email)
                 if not resolved_addrs:
                     continue
                 for address, slack_target in resolved_addrs.items():
