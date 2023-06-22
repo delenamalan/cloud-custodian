@@ -9,7 +9,6 @@ from mock import patch, MagicMock
 from common import RESOURCE_3, SQS_MESSAGE_5, MockEmailDelivery, CLOUDTRAIL_EVENT, MAILER_CONFIG
 
 from c7n_mailer.slack_delivery import SlackDelivery
-from c7n_mailer.email_delivery import EmailDelivery
 
 SLACK_TOKEN = "slack-token"
 SLACK_POST_MESSAGE_API = "https://slack.com/api/chat.postMessage"
@@ -63,7 +62,9 @@ class TestSlackDelivery(unittest.TestCase):
         self.target_channel = "michael_bolton@initech.com"
         assert "michael_bolton@initech.com" in result
         assert json.loads(result[self.target_channel])["channel"] == "slack-michael_bolton@initech.com"
-        self.logger.debug.assert_called_with("Generating messages for event-owner Slack target.")
+        self.logger.debug.assert_called_with(
+            "Generating messages for event-owner Slack target."
+        )
 
     def test_map_sending_to_tag_channel_with_hash(self):
         self.target_channel = "#tag-channel"
