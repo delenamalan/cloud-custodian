@@ -288,6 +288,7 @@ and here is a description of the options:
 |           | `subnets`            | array of strings |
 |           | `timeout`            | integer          |
 
+TODO: add lambda_trigger here
 ### Standard Azure Functions Config
 
 | Required? | Key                   | Type   | Notes                                                                                  |
