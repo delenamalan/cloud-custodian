@@ -29,6 +29,7 @@ def start_c7n_mailer(logger, config=None, parallel=False):
         if not config:
             config = config_setup()
         logger.info("c7n_mailer starting...")
+        # TODO: cater for SQS triggers
         mailer_sqs_queue_processor = MailerSqsQueueProcessor(config, session, logger)
         mailer_sqs_queue_processor.run(parallel)
     except Exception as e:

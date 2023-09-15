@@ -60,6 +60,7 @@ CONFIG_SCHEMA = {
         "lambda_description": {"type": "string"},
         "lambda_tags": {"type": "object"},
         "lambda_schedule": {"type": "string"},
+        "lambda_trigger": {"type": {"enum": ["sqs", "periodic"]}}, # TODO: default?
         # Azure Function Config
         "function_properties": {
             "type": "object",

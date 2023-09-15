@@ -5,7 +5,7 @@ import logging
 import json
 import os
 
-from c7n.mu import CloudWatchEventSource, LambdaFunction, LambdaManager, PythonPackageArchive
+from c7n.mu import CloudWatchEventSource, LambdaFunction, LambdaManager, PythonPackageArchive, SQSSubscription
 
 
 log = logging.getLogger("custodian-mailer")
@@ -21,6 +21,7 @@ logging.basicConfig(level=logging.INFO, format=log_format)
 logging.getLogger('botocore').setLevel(logging.WARNING)
 
 def dispatch(event, context):
+    # TODO: send event to function
     return handle.start_c7n_mailer(logger)
 """
 
@@ -75,6 +76,20 @@ def get_archive(config):
 
 
 def provision(config, session_factory):
+    events = []
+    if config.get("lambda_trigger", "periodic") == 'periodic':
+        events.append(CloudWatchEventSource(
+            {"type": "periodic", "schedule": config.get("lambda_schedule", "rate(5 minutes)")},
+            session_factory,
+        ))
+    elif config.get("lambda_trigger", "periodic") == 'sqs':
+        events.append(SQSSubscription(
+            session_factory,
+            queue_arns=[config.get("queue_url")],
+            # TODO: batch size
+        ))
+
+    # SQSSubscription
     func_config = dict(
         name=config.get("lambda_name", "cloud-custodian-mailer"),
         description=config.get("lambda_description", "Cloud Custodian Mailer"),
@@ -87,13 +102,7 @@ def provision(config, session_factory):
         subnets=config["subnets"],
         security_groups=config["security_groups"],
         dead_letter_config=config.get("dead_letter_config", {}),
-        events=[
-            # TODO: add option to rather trigger the function from SQS here
-            CloudWatchEventSource(
-                {"type": "periodic", "schedule": config.get("lambda_schedule", "rate(5 minutes)")},
-                session_factory,
-            )
-        ],
+        events=events,
     )
 
     archive = get_archive(config)

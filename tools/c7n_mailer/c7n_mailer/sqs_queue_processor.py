@@ -86,6 +86,7 @@ class MailerSqsQueueProcessor(MessageTargetMixin):
     """
 
     def run(self, parallel=False):
+        # TODO: if sqs-triggered, get the message from the event
         self.logger.info("Downloading messages from the SQS queue.")
         aws_sqs = self.session.client("sqs", endpoint_url=self.endpoint_url)
         sqs_messages = MailerSqsQueueIterator(aws_sqs, self.receive_queue, self.logger)
