@@ -5,9 +5,11 @@ from collections import defaultdict
 import fnmatch
 import logging
 import operator
+import os
 
 from c7n.actions import ActionRegistry
 from c7n.cache import NullCache
+from c7n.config import Config
 from c7n.filters import FilterRegistry
 from c7n.manager import ResourceManager
 
@@ -58,19 +60,21 @@ class PolicyMetadata:
         return " ".join(self.categories)
 
     @property
+    def url(self):
+        return self.policy.data.get("metadata", {}).get("url")
+
+    @property
     def categories(self):
         categories = self.policy.data.get("metadata", {}).get("category", [])
         if isinstance(categories, str):
             categories = [categories]
-        if not isinstance(categories, list) or (
-            categories and not isinstance(categories[0], str)
-        ):
+        if not isinstance(categories, list) or (categories and not isinstance(categories[0], str)):
             categories = []
         return categories
 
     @property
     def severity(self):
-        value = self.policy.data.get("metadata", {}).get("severity", "")
+        value = self.policy.data.get("metadata", {}).get("severity", "unknown")
         if isinstance(value, str):
             return value.lower()
         return ""
@@ -130,17 +134,13 @@ class ExecutionFilter:
         if filters["severity"]:
             invalid_severities = set(filters["severity"]).difference(SEVERITY_LEVELS)
         if invalid_severities:
-            raise ValueError(
-                "invalid severity for filtering %s" % (", ".join(invalid_severities))
-            )
+            raise ValueError("invalid severity for filtering %s" % (", ".join(invalid_severities)))
 
     def filter_attribute(self, filter_name, attribute, items):
         if not self.filters[filter_name] or not items:
             return items
         results = []
-        op_class = (
-            isinstance(items[0], dict) and operator.itemgetter or operator.attrgetter
-        )
+        op_class = isinstance(items[0], dict) and operator.itemgetter or operator.attrgetter
         op = op_class(attribute)
         for f in self.filters[filter_name]:
             for i in items:
@@ -221,7 +221,7 @@ class CollectionRunner:
             log.warning("no %s source files found" % provider.type)
             return True
 
-        graph = provider.parse(self.options.source_dir)
+        graph = provider.parse(self.options.source_dir, self.options.var_files)
 
         for p in self.policies:
             p.expand_variables(p.get_variables())
@@ -239,16 +239,16 @@ class CollectionRunner:
             for p in self.policies:
                 if not self.match_type(rtype, p):
                     continue
-                result_set = self.run_policy(p, graph, resources, event)
+                result_set = self.run_policy(p, graph, resources, event, rtype)
                 if result_set:
                     self.reporter.on_results(result_set)
                     found = True
         self.reporter.on_execution_ended()
         return found
 
-    def run_policy(self, policy, graph, resources, event):
+    def run_policy(self, policy, graph, resources, event, resource_type):
         event = dict(event)
-        event.update({"graph": graph, "resources": resources})
+        event.update({"graph": graph, "resources": resources, "resource_type": resource_type})
         return policy.push(event)
 
     def get_provider(self):
@@ -257,7 +257,7 @@ class CollectionRunner:
         return provider
 
     def get_event(self):
-        return {"config": self.options}
+        return {"config": self.options, "env": dict(os.environ)}
 
     @staticmethod
     def match_type(rtype, p):
@@ -282,10 +282,11 @@ class IACSourceMode(PolicyExecutionMode):
             return []
 
         resources = event["resources"]
+        resources = self.manager.augment(resources, event)
         resources = self.manager.filter_resources(resources, event)
-        return self.as_results(resources)
+        return self.as_results(resources, event)
 
-    def as_results(self, resources):
+    def as_results(self, resources, event):
         return ResultSet([PolicyResourceResult(r, self.policy) for r in resources])
 
 
@@ -318,11 +319,15 @@ class IACResourceManager(ResourceManager):
         self.data = data
         self._cache = NullCache(None)
         self.session_factory = lambda: None
+        self.config = ctx and ctx.options or Config.empty()
         self.filters = self.filter_registry.parse(self.data.get("filters", []), self)
         self.actions = self.action_registry.parse(self.data.get("actions", []), self)
 
     def get_resource_manager(self, resource_type, data=None):
         return self.__class__(self.ctx, data or {})
+
+    def augment(self, resources, event):
+        return resources
 
 
 IACResourceManager.filter_registry.register("traverse", Traverse)

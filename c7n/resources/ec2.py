@@ -20,7 +20,7 @@ from c7n.actions import (
 
 from c7n.exceptions import PolicyValidationError
 from c7n.filters import (
-    FilterRegistry, AgeFilter, ValueFilter, Filter, DefaultVpcBase
+    FilterRegistry, AgeFilter, ValueFilter, Filter
 )
 from c7n.filters.offhours import OffHour, OnHour
 import c7n.filters.vpc as net_filters
@@ -733,7 +733,7 @@ class InstanceAgeFilter(AgeFilter):
 
 
 @filters.register('default-vpc')
-class DefaultVpc(DefaultVpcBase):
+class DefaultVpc(net_filters.DefaultVpcBase):
     """ Matches if an ec2 database is in the default vpc
     """
 
@@ -2218,6 +2218,7 @@ class LaunchTemplate(query.QueryResourceManager):
         filter_name = 'LaunchTemplateIds'
         filter_type = 'list'
         arn_type = "launch-template"
+        cfn_type = "AWS::EC2::LaunchTemplate"
 
     def augment(self, resources):
         client = utils.local_session(
@@ -2345,7 +2346,7 @@ class SpotFleetRequest(query.QueryResourceManager):
         filter_type = 'list'
         date = 'CreateTime'
         arn_type = 'spot-fleet-request'
-        cfn_type = 'AWS::EC2::SpotFleet'
+        config_type = cfn_type = 'AWS::EC2::SpotFleet'
         permissions_enum = ('ec2:DescribeSpotFleetRequests',)
 
 
